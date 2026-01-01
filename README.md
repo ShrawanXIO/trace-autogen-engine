@@ -75,3 +75,38 @@ TRACE uses **Retrieval-Augmented Generation (RAG)** to treat our existing, peer-
 1.  Place your "Gold Standard" test cases in `data/legacy_knowledge_base.xlsx`.
 2.  Run `pip install -r requirements.txt`.
 3.  Execute `python src/app.py`.
+
+
+
+
+
+updated folder Structure 
+
+trace-stlc-engine/
+│
+├── .env                        # API Keys
+├── requirements.txt            # Dependencies
+├── README.md                   # Documentation
+│
+├── data/                       # [DATA LAYER]
+│   ├── existing_test_cases.csv
+│   └── output_test_cases.csv
+│
+├── src/                        # [LOGIC LAYER]
+│   ├── main.py                 # Entry Point
+│   ├── prompts.py              # System Instructions
+│   │
+│   ├── agents/                 # [AI PERSONAS]
+│   │   ├── archivist.py
+│   │   ├── author.py
+│   │   ├── auditor.py
+│   │   └── scribe.py
+│   │
+│   └── tools/                  # [PYTHON SKILLS]
+│       ├── knowledge_base.py   # Vector Search Logic
+│       └── file_ops.py         # CSV Read/Write Logic
+│
+└── tests/                      # [VERIFICATION LAYER]
+    ├── __init__.py
+    ├── test_vector_search.py   # Verify Retrieval accuracy
+    └── test_csv_ingest.py      # Verify data loading
