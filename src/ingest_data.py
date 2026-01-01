@@ -1,3 +1,10 @@
+#
+# Ingest Data Script
+# This script dynamically loads documents from specified folders,
+# splits them into chunks, generates embeddings using Ollama,
+# and stores them in a Chroma vector store.
+#
+
 import os
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader, CSVLoader, TextLoader, Docx2txtLoader
