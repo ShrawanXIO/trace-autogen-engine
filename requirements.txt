@@ -6,6 +6,7 @@ langchain>=0.1.0           # Main LangChain framework
 langchain-community>=0.0.10 # Community tools (PDF loaders, etc.)
 langchain-openai>=0.0.5    # OpenAI integration for Embeddings/LLMs
 langchain-chroma>=0.1.0    # LangChain wrapper for ChromaDB
+langchain-ollama>=0.0.5   # LangChain wrapper for Ollama
 
 # --- Vector Database ---
 chromadb>=0.4.15           # The actual database engine
