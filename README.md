@@ -7,7 +7,7 @@ Goal: Automated generation of high-quality, non-redundant test cases using Retri
 
 The Flow: Story + Scenario -> Search/Draft -> Review -> Output.
 
-
+```
 trace-stlc-engine/
 │
 ├── data/
@@ -33,7 +33,7 @@ trace-stlc-engine/
 │   └── settings.json
 │
 └── README.md
-
+```
 
 # TRACE: Test Requirements & AI Case Engine
 
@@ -81,7 +81,7 @@ TRACE uses **Retrieval-Augmented Generation (RAG)** to treat our existing, peer-
 
 
 updated folder Structure 
-
+```
 trace-stlc-engine/
 │
 ├── .env                        # API Keys
@@ -110,3 +110,5 @@ trace-stlc-engine/
     ├── __init__.py
     ├── test_vector_search.py   # Verify Retrieval accuracy
     └── test_csv_ingest.py      # Verify data loading
+
+```
