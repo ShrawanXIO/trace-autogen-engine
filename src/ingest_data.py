@@ -3,6 +3,7 @@
 # This script dynamically loads documents from specified folders,
 # splits them into chunks, generates embeddings using Ollama,
 # and stores them in a Chroma vector store.
+# to run the code python src/ingest_data.py
 #
 from dotenv import load_dotenv
 from tools.file_ops import load_documents_dynamically
