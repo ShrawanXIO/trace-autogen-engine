@@ -1,5 +1,5 @@
 # --- Core Agents (The Brains) ---
-pyautogen>=0.2.0           # Microsoft AutoGen (Agent Orchestration)
+pyautogen          # Microsoft AutoGen (Agent Orchestration)
 
 # --- RAG & Data Framework (The Muscle) ---
 langchain>=0.3.0           # Main LangChain framework
