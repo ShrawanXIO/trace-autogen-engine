@@ -8,4 +8,4 @@ venv\Scripts\activate
 
 # 3. Install the libraries
 pip install -r requirements.txt    
-                                # Whatever the requirements that are required to run this project will be inside the requirements.txt file. 
+                                # Whatever the Dependencies that are required to run this project will be inside the requirements.txt file. 
