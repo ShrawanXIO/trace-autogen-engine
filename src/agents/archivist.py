@@ -10,7 +10,7 @@ class Archivist:
         print("--- Initializing Archivist Agent ---")
         
         try:
-            self.llm = ChatOllama(model="llama3")
+            self.llm = ChatOllama(model="gpt-oss:20b-cloud")
             self.retriever = get_retriever()
 
             # STRICT PROMPT: Enforces "Librarian" behavior, forbids "Creator" behavior.

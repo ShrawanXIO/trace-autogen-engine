@@ -1,19 +1,18 @@
 import sys
 import os
+import json
 
-# Ensure we can import from src/ (the parent directory)
+# Ensure we can import from src/
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
+# Agent Imports 
 from agents.archivist import Archivist
 from agents.author import Author
 from agents.auditor import Auditor
 from agents.scribe import Scribe
-
-# Import the Smart Ingestion Tool
 from ingest_data import ingest_knowledge_base
 
 class Manager:
@@ -24,20 +23,63 @@ class Manager:
             self.author = Author()
             self.auditor = Auditor(archivist_agent=self.archivist)
             self.scribe = Scribe()
-            self.llm = ChatOllama(model="llama3")
+            # Fast model for decision making
+            self.llm = ChatOllama(model="ministral-3:14b-cloud")
         except Exception as e:
             print(f"Error initializing team: {e}")
             sys.exit(1)
 
     def sync_knowledge(self):
-        """
-        Triggers the Smart Sync.
-        The ingest_data script handles the logic of checks vs. updates.
-        """
         print("\n[MANAGER] Verifying Knowledge Base state...")
-        # This call is now "smart" - it only updates if files changed
         status = ingest_knowledge_base()
         print(f"[MANAGER] Status: {status}")
+
+    def analyze_input(self, full_text):
+        """
+        Splits the User Input into 'Rules' (Context) and 'Scenarios' (Tasks).
+        """
+        print("[MANAGER] Parsing User Input (separating Rules from Scenarios)...")
+        
+        template = """
+        You are a Data parser. Analyze the input text below.
+        
+        INPUT TEXT:
+        "{input}"
+        
+        INSTRUCTIONS:
+        1. Extract the "Rules/Context" (Feature Description, Background, Acceptance Criteria).
+        2. Extract the "Scenarios" (The numbered list or specific test scenarios).
+        
+        FORMAT OUTPUT strictly as:
+        --- RULES ---
+        (Paste rules here)
+        --- SCENARIOS ---
+        (Paste scenarios here)
+        """
+        
+        prompt = PromptTemplate(template=template, input_variables=["input"])
+        chain = prompt | self.llm | StrOutputParser()
+        
+        try:
+            result = chain.invoke({"input": full_text})
+            
+            # Simple string parsing
+            rules = ""
+            scenarios = ""
+            
+            if "--- RULES ---" in result and "--- SCENARIOS ---" in result:
+                parts = result.split("--- SCENARIOS ---")
+                rules = parts[0].replace("--- RULES ---", "").strip()
+                scenarios = parts[1].strip()
+            else:
+                # Fallback: Treat everything as scenarios
+                rules = "General Requirement"
+                scenarios = full_text
+                
+            return rules, scenarios
+        except Exception as e:
+            print(f"Parsing Error: {e}")
+            return full_text, full_text
 
     def classify_intent(self, user_input):
         template = """
@@ -45,8 +87,8 @@ class Manager:
         Input: "{input}"
         
         Options:
-        1. QUESTION (User asks for info/rules/status).
-        2. REQUIREMENT (User provides a scenario/story to write tests for).
+        1. QUESTION (User asks for info/rules).
+        2. REQUIREMENT (User provides a scenario/story).
         
         Return ONLY one word: "QUESTION" or "REQUIREMENT".
         """
@@ -58,47 +100,58 @@ class Manager:
         except:
             return "REQUIREMENT"
 
-    def run_generation_workflow(self, user_requirement):
+    def run_generation_workflow(self, user_input):
         print("\n[MANAGER] Starting Workflow...")
 
-        # 1. GATEKEEPER CHECK (Duplicates)
-        print(f"[MANAGER] Asking Archivist to check for duplicates...")
-        duplication_query = f"""
-        Check database for EXISTING test cases strictly covering: "{user_requirement}".
-        Output "FOUND_EXISTING: [ID] [Title]" OR "NO_EXISTING_TESTS".
-        """
+        # STEP 0: INTELLIGENT PARSING
+        # We separate the input so we don't confuse the agents.
+        rules_text, scenarios_text = self.analyze_input(user_input)
+        
+        print(f"\n[MANAGER] Identified Task:")
+        print(f"   - Context Source: {len(rules_text)} chars")
+        print(f"   - Scenarios to Write: \n{scenarios_text[:100]}...")
+
+        # STEP 1: DUPLICATION CHECK (Using ONLY Scenarios)
+        print(f"\n[MANAGER] Asking Archivist to check for duplicates...")
+        # We only check if these specific SCENARIOS exist. We don't care if the Feature exists.
+        duplication_query = f"Check database for EXISTING test cases strictly covering these scenarios: {scenarios_text}"
         check_result = self.archivist.ask(duplication_query)
         
         if "FOUND_EXISTING" in check_result:
-            return f"Duplicate detected. Stopping.\n{check_result.replace('FOUND_EXISTING:', 'Reference:')}"
+             return f"Duplicate detected. Stopping.\n{check_result}"
 
-        # 2. CONTEXT GATHERING (Docs & Style)
-        print(f"[MANAGER] Gathering context for Author...")
-        context_query = f"Find functional rules and style examples for: {user_requirement}"
-        context = self.archivist.ask(context_query)
+        # STEP 2: CONTEXT GATHERING (Using ONLY Rules)
+        print(f"\n[MANAGER] Gathering context for Author...")
+        # We ask Archivist to find docs matching the Feature/Criteria
+        context_query = f"Find standard business rules and style guides related to: {rules_text}"
+        retrieved_docs = self.archivist.ask(context_query)
+        
+        # We combine the User's Rules + Retrieved Docs into one "Master Context"
+        full_context = f"USER PROVIDED RULES:\n{rules_text}\n\nSYSTEM DOCS:\n{retrieved_docs}"
 
-        # 3. PRODUCTION LOOP (Author -> Auditor)
-        topic = user_requirement
+        # STEP 3: PRODUCTION LOOP
+        topic = scenarios_text  # Author focuses on Scenarios
         feedback = ""
         previous_draft = ""
         attempt = 1
-        max_attempts = 3
+        max_attempts = 2 # Synergized limit
 
         while attempt <= max_attempts:
             print(f"\n[Attempt {attempt}/{max_attempts}]")
             
-            # Author works
-            draft = self.author.write(topic, context=context, feedback=feedback, previous_draft=previous_draft)
+            # Author works on 'topic' (Scenarios) using 'full_context' (Rules)
+            draft = self.author.write(topic, context=full_context, feedback=feedback, previous_draft=previous_draft)
             previous_draft = draft
 
-            # Auditor reviews
+            # Auditor checks the Draft against the Scenarios
             review = self.auditor.review(topic, draft)
             
             if "STATUS: APPROVED" in review:
                 print("\n[MANAGER] Quality Gate Passed.")
                 print("[MANAGER] Handing off to Scribe...")
+                # Scribe saves the SINGLE file containing ALL scenarios
                 save_status = self.scribe.save(draft)
-                return f"Workflow Complete.\n{draft}\n\n{save_status}"
+                return f"Workflow Complete.\n\n{save_status}"
             else:
                 print("\n[MANAGER] Quality Gate Failed. Sending back to Author.")
                 print(f"Feedback: {review}")
@@ -108,13 +161,7 @@ class Manager:
         return "Error: Max attempts reached. Content could not be approved."
 
     def process_request(self, user_input):
-        """
-        Main entry point.
-        """
-        # STEP 1: Smart Sync (Fast check or Full update)
         self.sync_knowledge()
-
-        # STEP 2: Determine Intent
         intent = self.classify_intent(user_input)
         
         if "QUESTION" in intent:
