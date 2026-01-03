@@ -14,7 +14,7 @@ class Scribe:
             os.makedirs(self.output_dir)
 
         # Initialize LLM for formatting
-        self.llm = ChatOllama(model="llama3")
+        self.llm = ChatOllama(model="ministral-3:14b-cloud")
         
         # Define the Formatter Persona
         # It takes the 'Human Readable' text and turns it into 'Machine Readable' CSV

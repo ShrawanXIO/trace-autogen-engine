@@ -6,75 +6,78 @@ from langchain_core.output_parsers import StrOutputParser
 class Author:
     def __init__(self):
         print("--- Initializing Author Agent ---")
-        
         try:
-            # 1. Initialize LLM
-            self.llm = ChatOllama(model="llama3")
+            self.llm = ChatOllama(model="ministral-3:14b-cloud")
 
-            # 2. Define the Writer's Personality
             template = """
             You are 'The Author', a Senior QA Engineer.
             
-            --- CONTEXT ---
-            User Request: {topic}
-            Previous Draft (if any):
-            {previous_draft}
+            --- INPUTS ---
+            SCENARIOS TO AUTOMATE (The Task):
+            "{topic}"
             
-            Auditor Feedback (if any): 
-            {feedback}
-            --------------
+            BUSINESS RULES & CONTEXT (The Truth):
+            "{context}"
+            
+            FEEDBACK: {feedback}
+            PREVIOUS DRAFT: {previous_draft}
+            ----------------
 
-            Instructions:
-            1. If there is NO Previous Draft, write fresh test cases based on the Request.
-            2. If there IS a Previous Draft + Feedback:
-               - Locate the specific Test Case mentioned in the Feedback.
-               - UPDATE ONLY that specific part (e.g., add the missing step, fix the result).
-               - DO NOT change Test Cases that were already correct.
-               - RETURN the full corrected set of test cases.
+            INSTRUCTIONS:
+            1. Read the "SCENARIOS TO AUTOMATE" list.
+            2. For EACH scenario in that list, create a Test Case.
+            3. Use "BUSINESS RULES" to fill in the "Pre-conditions" and "Expected Results".
+            4. If Feedback exists, fix the errors without rewriting valid tests.
+            5. Output ALL test cases in one single block.
 
-            Format exactly like this:
-            Test Case ID: [ID]
-            Title: [Title]
-            Pre-conditions: [Pre-conditions]
+            FORMAT:
+            
+            --- THOUGHTS ---
+            * (Strategy: "Mapping Scenario 1 to Rule X...")
+            --- END THOUGHTS ---
+
+            Test Case ID: [TC_01]
+            Title: [Scenario Name]
+            Pre-conditions: [Derived from Rules]
             Steps:
-            1. [Step 1]  | Step 1 Expected Result: [Expected Result]
-            2. [Step 2]  | Step 2 Expected Result: [Expected Result]
-            ...
-            cleanup steps: [Cleanup]
+            1. [Step]
+            Expected Result: [Result]
             
-            Generate or Update the Test Cases now:
+            Test Case ID: [TC_02]
+            ...
             """
             
-            prompt = PromptTemplate(
+            self.prompt = PromptTemplate(
                 template=template, 
-                input_variables=["topic", "feedback", "previous_draft"]
+                input_variables=["topic", "context", "feedback", "previous_draft"]
             )
 
-            self.chain = prompt | self.llm | StrOutputParser()
+            self.chain = self.prompt | self.llm | StrOutputParser()
             
         except Exception as e:
             print(f"Error setting up Author: {e}")
             raise e
 
-    def write(self, topic, feedback="", previous_draft=""):
-        """
-        Generates or Updates test cases.
-        """
-        if not topic:
-            return "Please provide a topic."
-            
+    def write(self, topic, context, feedback="", previous_draft=""):
+        if not topic: return "Please provide a topic."
         try:
-            if feedback:
-                print(f"Author is fixing specific errors in draft...")
-            else:
-                print(f"Author is writing about: {topic}...")
-
-            # Invoke the chain with all three inputs
-            response = self.chain.invoke({
-                "topic": topic, 
+            mode = "Refining" if feedback else "Drafting"
+            print(f"Author is {mode}...")
+            
+            full_response = self.chain.invoke({
+                "topic": topic,
+                "context": context, 
                 "feedback": feedback if feedback else "None",
                 "previous_draft": previous_draft if previous_draft else "None"
             })
-            return response
+
+            if "--- END THOUGHTS ---" in full_response:
+                parts = full_response.split("--- END THOUGHTS ---")
+                thought = parts[0].replace("--- THOUGHTS ---", "").strip()
+                content = parts[1].strip()
+                print(f"\n[AUTHOR STRATEGY]\n{thought}\n" + "-"*40)
+                return content
+            else:
+                return full_response
         except Exception as e:
             return f"Error: {e}"
