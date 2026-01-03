@@ -13,10 +13,10 @@ class Author:
             You are 'The Author', a Senior QA Engineer.
             
             --- INPUTS ---
-            SCENARIOS TO AUTOMATE (The Task):
+            TASKS (Scenarios to Automate):
             "{topic}"
             
-            BUSINESS RULES & CONTEXT (The Truth):
+            RULES (Context & Acceptance Criteria):
             "{context}"
             
             FEEDBACK: {feedback}
@@ -24,10 +24,10 @@ class Author:
             ----------------
 
             INSTRUCTIONS:
-            1. Read the "SCENARIOS TO AUTOMATE" list.
+            1. Read the "TASKS" list.
             2. For EACH scenario in that list, create a Test Case.
-            3. Use "BUSINESS RULES" to fill in the "Pre-conditions" and "Expected Results".
-            4. If Feedback exists, fix the errors without rewriting valid tests.
+            3. Use "RULES" to fill in the "Pre-conditions" and "Expected Results".
+            4. If Feedback exists, fix errors without rewriting valid tests.
             5. Output ALL test cases in one single block.
 
             FORMAT:
@@ -73,10 +73,7 @@ class Author:
 
             if "--- END THOUGHTS ---" in full_response:
                 parts = full_response.split("--- END THOUGHTS ---")
-                thought = parts[0].replace("--- THOUGHTS ---", "").strip()
-                content = parts[1].strip()
-                print(f"\n[AUTHOR STRATEGY]\n{thought}\n" + "-"*40)
-                return content
+                return parts[1].strip()
             else:
                 return full_response
         except Exception as e:
