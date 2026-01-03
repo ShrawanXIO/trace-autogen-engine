@@ -1,0 +1,7 @@
+Here is the formatted Test Cases output as a clean CSV string:
+
+"ID","Title","Pre-conditions","Steps","Expected Result"
+"TC_001","Verify Login Success","User has valid account","\"Enter username\",\"Enter password\",\"Click Login\"","Dashboard loads"
+"TC_002","Verify Login Failure","User is on login page","\"Enter invalid username\",\"Click Login\"","Error message appears"
+
+Let me know if you need anything else!

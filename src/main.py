@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from agents.archivist import Archivist
 from agents.author import Author
 from agents.auditor import Auditor
+from agents.scribe import Scribe
 
 # Load environment variables
 load_dotenv()
@@ -24,29 +25,27 @@ def run_generation_loop(author, auditor, user_requirement):
         print(f"\n[Attempt {attempt}/{max_attempts}]")
         
         # 1. Author Writes
-        # We pass previous_draft so the author knows what to fix in subsequent loops
         draft = author.write(topic, feedback, previous_draft)
         
-        # Store this draft for the next loop (if needed)
+        # Store this draft for the next loop
         previous_draft = draft
 
         # 2. Auditor Reviews
-        # The Auditor will consult the Archivist internally to check against documentation
         review_result = auditor.review(topic, draft)
         
         # 3. Check Decision
         if "STATUS: APPROVED" in review_result:
-            print("\n✅ Auditor Decision: APPROVED")
+            print("\n[AUDITOR] Decision: APPROVED")
             return draft
         else:
-            print("\n❌ Auditor Decision: REJECTED")
+            print("\n[AUDITOR] Decision: REJECTED")
             print(f"Feedback: {review_result}")
             
             # Use the review as feedback for the next loop
             feedback = review_result
             attempt += 1
 
-    print("\n⚠️ Max attempts reached. Returning best available version.")
+    print("\nWarning: Max attempts reached. Returning best available version.")
     return previous_draft
 
 def main():
@@ -61,8 +60,10 @@ def main():
         author = Author()
         
         # 3. Create Auditor (The Reviewer)
-        # We pass the archivist so the Auditor can check facts
         auditor = Auditor(archivist_agent=archivist)
+        
+        # 4. Create Scribe (The File Handler)
+        scribe = Scribe()
         
         print("System Ready.")
     except Exception as e:
@@ -103,9 +104,15 @@ def main():
             final_content = run_generation_loop(author, auditor, user_input)
             
             print("\n" + "="*30)
-            print("🏆 FINAL OUTPUT")
+            print("FINAL OUTPUT")
             print("="*30)
             print(final_content)
+            
+            # Save to Disk
+            if final_content:
+                print("\nSaving to disk...")
+                save_status = scribe.save(final_content)
+                print(save_status)
 
 if __name__ == "__main__":
     main()
