@@ -11,38 +11,30 @@ class Auditor:
             self.archivist = archivist_agent
             self.llm = ChatOllama(model="llama3")
 
-            # 3. Universal Conflict Resolution Logic
+            # Updated Persona: Now includes "Reasoning First" instructions
             template = """
             You are 'The Auditor', a strict Senior QA Lead.
             
-            Your job is to validate Test Cases against the "Source of Truth" (System Documentation).
-            
-            --- INPUTS ---
-            1. User Request: "{requirement}"
-            2. System Documentation (Rules & Constraints):
-            "{context}"
-            3. Generated Test Cases (Draft):
-            "{test_cases}"
-            --------------
+            --- SOURCES ---
+            User Request: "{requirement}"
+            System Docs: "{context}"
+            Draft Test Cases: "{test_cases}"
+            ---------------
 
-            --- VALIDATION LOGIC ---
-            Analyze the "User Request" vs "System Documentation".
-            
-            SCENARIO A: The User Request is compliant with System Rules.
-            -> Ensure the Test Case steps are accurate and the Expected Result is Success.
+            INSTRUCTIONS:
+            1. Analyze the Draft against the User Request and System Docs.
+            2. Identify any missing rules or negative scenarios.
+            3. First, output your REASONING.
+            4. Then, output your DECISION.
 
-            SCENARIO B: The User Request VIOLATES a System Rule (e.g., missing field, invalid data, wrong status).
-            -> CHECK: Does the Test Case incorrectly show "Success" or "Valid"?
-            -> ACTION: IF yes, REJECT it. 
-               - The Test Case MUST simulate the User's bad input (do not change the input).
-               - BUT the Expected Result MUST be a "System Error" or "Validation Failure".
-               - This is called a "Negative Test Case".
+            FORMAT:
 
-            --- OUTPUT FORMAT ---
-            Strictly output in this format:
+            --- ANALYSIS ---
+            (Explain your logical check here. E.g., "The user asked for X, but the draft shows Y...")
+            --- END ANALYSIS ---
             
             STATUS: [APPROVED or REJECTED]
-            FEEDBACK: [If REJECTED, explain the logical conflict. E.g., "The input X violates Rule Y. Therefore, the Expected Result must be an Error Message, not Success."]
+            FEEDBACK: [Details]
             """
             
             self.prompt = PromptTemplate(
@@ -57,28 +49,35 @@ class Auditor:
             raise e
 
     def review(self, requirement, test_cases_text):
-        """
-        1. Consults the Archivist for background info.
-        2. Reviews the tests against that info using logic gates.
-        """
         if not requirement or not test_cases_text:
             return "Error: Missing inputs."
             
         try:
-            print(f"Auditor is checking constraints for: '{requirement}'...")
-            
-            # 1. RETRIEVAL STEP
-            # We ask specifically for constraints/rules to help the logic gate
-            context_query = f"List all business rules, constraints, and negative scenarios for: {requirement}"
+            print(f"Auditor is retrieving context for verification...")
+            context_query = f"Business rules and constraints for: {requirement}"
             system_context = self.archivist.ask(context_query)
             
-            # 2. REVIEW STEP
-            response = self.chain.invoke({
+            # Execute LLM
+            full_response = self.chain.invoke({
                 "requirement": requirement,
                 "context": system_context,
                 "test_cases": test_cases_text
             })
-            return response
+            
+            # PARSE: Separate Analysis from Decision
+            # This logic enables the "Glass Box" transparency
+            if "--- END ANALYSIS ---" in full_response:
+                parts = full_response.split("--- END ANALYSIS ---")
+                analysis = parts[0].replace("--- ANALYSIS ---", "").strip()
+                decision_block = parts[1].strip()
+                
+                # Show the Chain of Thought to the User
+                print(f"\n[AUDITOR'S ANALYSIS]\n{analysis}\n" + "-"*40)
+                
+                return decision_block
+            else:
+                # Fallback if LLM forgets the format
+                return full_response
             
         except Exception as e:
             return f"Error: {e}"

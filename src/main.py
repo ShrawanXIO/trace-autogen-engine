@@ -8,13 +8,49 @@ from agents.scribe import Scribe
 # Load environment variables
 load_dotenv()
 
-def run_generation_loop(author, auditor, user_requirement):
-    """
-    Orchestrates the collaboration between Author and Auditor.
-    It loops until the Auditor approves or max attempts are reached.
-    """
-    print("\n--- Starting Automatic Review Loop ---")
+def run_generation_loop(archivist, author, auditor, user_requirement):
+    print("\n--- Starting Generation Workflow ---")
     
+    # ---------------------------------------------------------
+    # STEP 1: DUPLICATION CHECK (The Gatekeeper)
+    # ---------------------------------------------------------
+    print(f"\n[ARCHIVIST] Checking for existing test cases for: '{user_requirement}'...")
+    
+    # We force the Archivist to reply with a specific signal if tests exist
+    duplication_query = f"""
+    Check the database for any EXISTING test cases that strictly cover this scenario: "{user_requirement}".
+    
+    - If you find a match, output ONLY: "FOUND_EXISTING: [ID] - [Title]"
+    - If you find NO match, output ONLY: "NO_EXISTING_TESTS"
+    """
+    
+    duplication_check = archivist.ask(duplication_query)
+    
+    # DECISION LOGIC
+    if "FOUND_EXISTING" in duplication_check:
+        print("\n[SYSTEM] Duplicate Scenario Detected.")
+        print(f"The Archivist found existing tests. Author will NOT run.\n")
+        print(duplication_check.replace("FOUND_EXISTING:", "Existing Test Case:"))
+        return None  # Exit the loop immediately, returning Nothing (so Scribe doesn't save)
+
+    print("[ARCHIVIST] No duplicates found. Proceeding to generation.")
+
+    # ---------------------------------------------------------
+    # STEP 2: CONTEXT GATHERING (For the Author)
+    # ---------------------------------------------------------
+    # Now we ask Archivist for "Requirements" and "Reference Examples" (Style Guide)
+    print(f"\n[ARCHIVIST] Gathering context (Docs & Reference Tests)...")
+    
+    context_query = f"""
+    1. Find the Functional Requirements and Business Rules for: "{user_requirement}".
+    2. Find ONE existing test case to serve as a formatting example (Style Guide).
+    """
+    project_context = archivist.ask(context_query)
+    print(f"[INFO] Context passed to Author.")
+
+    # ---------------------------------------------------------
+    # STEP 3: AUTHOR & AUDITOR LOOP
+    # ---------------------------------------------------------
     topic = user_requirement
     feedback = ""
     previous_draft = ""
@@ -24,24 +60,19 @@ def run_generation_loop(author, auditor, user_requirement):
     while attempt <= max_attempts:
         print(f"\n[Attempt {attempt}/{max_attempts}]")
         
-        # 1. Author Writes
-        draft = author.write(topic, feedback, previous_draft)
-        
-        # Store this draft for the next loop
+        # Author Writes (using the Context found in Step 2)
+        draft = author.write(topic, context=project_context, feedback=feedback, previous_draft=previous_draft)
         previous_draft = draft
 
-        # 2. Auditor Reviews
+        # Auditor Reviews
         review_result = auditor.review(topic, draft)
         
-        # 3. Check Decision
         if "STATUS: APPROVED" in review_result:
             print("\n[AUDITOR] Decision: APPROVED")
             return draft
         else:
             print("\n[AUDITOR] Decision: REJECTED")
             print(f"Feedback: {review_result}")
-            
-            # Use the review as feedback for the next loop
             feedback = review_result
             attempt += 1
 
@@ -51,26 +82,17 @@ def run_generation_loop(author, auditor, user_requirement):
 def main():
     print("Trace STLC Engine Starting...")
     
-    # Initialize Agents
     try:
-        # 1. Create Archivist (The Knowledge)
+        # Initialize Agents
         archivist = Archivist()
-        
-        # 2. Create Author (The Writer)
         author = Author()
-        
-        # 3. Create Auditor (The Reviewer)
         auditor = Auditor(archivist_agent=archivist)
-        
-        # 4. Create Scribe (The File Handler)
         scribe = Scribe()
-        
         print("System Ready.")
     except Exception as e:
         print(f"Error initializing agents: {e}")
         sys.exit(1)
 
-    # Main Conversation Loop
     while True:
         print("\n--------------------------------------------------")
         mode = input("Select Mode (ask/write) or 'exit': ").strip().lower()
@@ -80,36 +102,30 @@ def main():
             break
 
         if mode not in ["ask", "write"]:
-            print("Invalid mode. Please type 'ask' or 'write'.")
+            print("Invalid mode.")
             continue
 
         user_input = input(f"Enter Request for {mode}: ")
         
-        if user_input.lower() in ["exit", "quit"]:
-            print("Exiting...")
-            break
-
         if not user_input.strip():
             continue
 
-        print("Processing...")
-
         if mode == "ask":
-            # Simple Research Mode
             response = archivist.ask(user_input)
             print(f"\nArchivist: {response}")
         
         elif mode == "write":
-            # Smart Generation Loop (Author + Auditor + Archivist)
-            final_content = run_generation_loop(author, auditor, user_input)
+            # The loop now handles the duplication check internally
+            # Note: We now pass 'archivist' as the first argument
+            final_content = run_generation_loop(archivist, author, auditor, user_input)
             
-            print("\n" + "="*30)
-            print("FINAL OUTPUT")
-            print("="*30)
-            print(final_content)
-            
-            # Save to Disk
+            # We only print/save if actual content was returned (i.e., not a duplicate)
             if final_content:
+                print("\n" + "="*30)
+                print("FINAL OUTPUT")
+                print("="*30)
+                print(final_content)
+                
                 print("\nSaving to disk...")
                 save_status = scribe.save(final_content)
                 print(save_status)
