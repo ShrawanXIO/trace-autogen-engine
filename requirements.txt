@@ -18,5 +18,8 @@ python-dotenv              # API Key security
 pypdf                      # PDF parsing dependency for LangChain
 pytest>=7.4.0              # Testing framework
 
+# --- Web Interface ---
+streamlit # Streamlit for the web UI
 
 # --- LLM Providers ---
+ollama # Ollama for local LLM inference
