@@ -17,6 +17,7 @@ trace-stlc-engine/
 │
 ├── src/
 │   ├── agents/
+│   │   ├── manager.py              # manager of the team
 │   │   ├── archivist.py            # Retrieval (Logic + Style)
 │   │   ├── author.py               # Drafting (Mimics the Style)
 │   │   ├── auditor.py              # Review (Sanity Check)
@@ -64,6 +65,7 @@ TRACE uses **Retrieval-Augmented Generation (RAG)** to treat our existing, peer-
     - Retrieves the best matching "Golden Example" from history.
     - Generates the new test case with full depth (Pre-reqs -> Steps -> Cleanup).
 4.  **Reviewer** validates the output.
+5. **Manager(James)** He acts as a bridge between agents and clarifies all the questions. 
 
 ## 🛠 Tech Stack
 - **Python 3.10+**
@@ -79,7 +81,7 @@ TRACE uses **Retrieval-Augmented Generation (RAG)** to treat our existing, peer-
 
 
 
-
+``
 updated folder Structure 
 ```
 trace-stlc-engine/
