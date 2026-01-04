@@ -81,7 +81,7 @@ TRACE uses **Retrieval-Augmented Generation (RAG)** to treat our existing, peer-
 
 
 
-
+``
 updated folder Structure 
 
 trace-stlc-engine/
@@ -112,3 +112,5 @@ trace-stlc-engine/
     ├── __init__.py
     ├── test_vector_search.py   # Verify Retrieval accuracy
     └── test_csv_ingest.py      # Verify data loading
+
+```
