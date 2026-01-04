@@ -1,6 +1,6 @@
 import sys
 import os
-import json
+import re
 
 # Ensure we can import from src/
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-# Agent Imports 
+
 from agents.archivist import Archivist
 from agents.author import Author
 from agents.auditor import Auditor
@@ -18,155 +18,141 @@ from ingest_data import ingest_knowledge_base
 class Manager:
     def __init__(self):
         print("--- Initializing Manager Agent (Team Lead) ---")
-        try:
-            self.archivist = Archivist()
-            self.author = Author()
-            self.auditor = Auditor(archivist_agent=self.archivist)
-            self.scribe = Scribe()
-            # Fast model for decision making
-            self.llm = ChatOllama(model="ministral-3:14b-cloud")
-        except Exception as e:
-            print(f"Error initializing team: {e}")
-            sys.exit(1)
-
-    def sync_knowledge(self):
-        print("\n[MANAGER] Verifying Knowledge Base state...")
-        status = ingest_knowledge_base()
-        print(f"[MANAGER] Status: {status}")
-
-    def analyze_input(self, full_text):
-        """
-        Splits the User Input into 'Rules' (Context) and 'Scenarios' (Tasks).
-        """
-        print("[MANAGER] Parsing User Input (separating Rules from Scenarios)...")
+        print("[MANAGER] Verifying Knowledge Base State...")
+        ingest_knowledge_base()
         
-        template = """
-        You are a Data parser. Analyze the input text below.
+        self.archivist = Archivist()
+        self.author = Author()
+        self.auditor = Auditor(archivist_agent=self.archivist)
+        self.scribe = Scribe()
+        self.llm = ChatOllama(model="ministral-3:14b-cloud")
+
+        # --- SMART PARSER PROMPT ---
+        self.parser_template = """
+        You are the QA Manager. Parse the user input into structured data.
         
         INPUT TEXT:
-        "{input}"
+        {input_text}
         
         INSTRUCTIONS:
-        1. Extract the "Rules/Context" (Feature Description, Background, Acceptance Criteria).
-        2. Extract the "Scenarios" (The numbered list or specific test scenarios).
+        1. Identify the **Context** (Feature, Description, AC).
+        2. Identify the **List of Scenarios**.
+           - Handle typos like "Senerios".
+           - **CRITICAL:** Ignore empty lines and whitespace.
+           - **CRITICAL:** Extract only the actual scenario text lines.
+           - Do not summarize. If there are 19 actual scenarios, list all 19.
         
-        FORMAT OUTPUT strictly as:
-        --- RULES ---
-        (Paste rules here)
-        --- SCENARIOS ---
-        (Paste scenarios here)
+        OUTPUT FORMAT STRICTLY:
+        --- CONTEXT ---
+        (Context text here)
+        --- TASKS ---
+        (Scenario 1)
+        (Scenario 2)
+        ...
         """
-        
-        prompt = PromptTemplate(template=template, input_variables=["input"])
-        chain = prompt | self.llm | StrOutputParser()
-        
-        try:
-            result = chain.invoke({"input": full_text})
-            
-            # Simple string parsing
-            rules = ""
-            scenarios = ""
-            
-            if "--- RULES ---" in result and "--- SCENARIOS ---" in result:
-                parts = result.split("--- SCENARIOS ---")
-                rules = parts[0].replace("--- RULES ---", "").strip()
-                scenarios = parts[1].strip()
-            else:
-                # Fallback: Treat everything as scenarios
-                rules = "General Requirement"
-                scenarios = full_text
-                
-            return rules, scenarios
-        except Exception as e:
-            print(f"Parsing Error: {e}")
-            return full_text, full_text
+        self.parser_prompt = PromptTemplate(template=self.parser_template, input_variables=["input_text"])
+        self.parser_chain = self.parser_prompt | self.llm | StrOutputParser()
 
-    def classify_intent(self, user_input):
-        template = """
-        Analyze the user input and determine the Intent.
-        Input: "{input}"
-        
-        Options:
-        1. QUESTION (User asks for info/rules).
-        2. REQUIREMENT (User provides a scenario/story).
-        
-        Return ONLY one word: "QUESTION" or "REQUIREMENT".
-        """
-        prompt = PromptTemplate(template=template, input_variables=["input"])
-        chain = prompt | self.llm | StrOutputParser()
-        
+    def analyze_input_smartly(self, text):
+        print("[MANAGER] Using AI to parse input structure...")
         try:
-            return chain.invoke({"input": user_input}).strip().upper()
-        except:
-            return "REQUIREMENT"
+            response = self.parser_chain.invoke({"input_text": text})
+            context = "General Context"
+            tasks = []
+            if "--- TASKS ---" in response:
+                parts = response.split("--- TASKS ---")
+                context = parts[0].replace("--- CONTEXT ---", "").strip()
+                raw_tasks = parts[1].strip()
+                tasks = [line.strip() for line in raw_tasks.split('\n') if line.strip()]
+            else:
+                print("[MANAGER] Warning: AI parsing fallback. Using raw split.")
+                tasks = [line.strip() for line in text.split('\n') if line.strip()]
+            return context, tasks
+        except Exception as e:
+            print(f"[MANAGER] Parsing error: {e}")
+            return "Context", []
 
     def run_generation_workflow(self, user_input):
         print("\n[MANAGER] Starting Workflow...")
 
-        # STEP 0: INTELLIGENT PARSING
-        # We separate the input so we don't confuse the agents.
-        rules_text, scenarios_text = self.analyze_input(user_input)
+        # 1. PARSE
+        context_rules, scenario_list = self.analyze_input_smartly(user_input)
+        print(f"[MANAGER] Identified {len(scenario_list)} valid scenarios.")
         
-        print(f"\n[MANAGER] Identified Task:")
-        print(f"   - Context Source: {len(rules_text)} chars")
-        print(f"   - Scenarios to Write: \n{scenarios_text[:100]}...")
+        if not scenario_list:
+            return "Error: No scenarios found to process."
 
-        # STEP 1: DUPLICATION CHECK (Using ONLY Scenarios)
-        print(f"\n[MANAGER] Asking Archivist to check for duplicates...")
-        # We only check if these specific SCENARIOS exist. We don't care if the Feature exists.
-        duplication_query = f"Check database for EXISTING test cases strictly covering these scenarios: {scenarios_text}"
-        check_result = self.archivist.ask(duplication_query)
+        # 2. RECONCILE
+        print(f"[MANAGER] Verifying Scenarios against Vector Store...")
         
-        if "FOUND_EXISTING" in check_result:
-             return f"Duplicate detected. Stopping.\n{check_result}"
-
-        # STEP 2: CONTEXT GATHERING (Using ONLY Rules)
-        print(f"\n[MANAGER] Gathering context for Author...")
-        # We ask Archivist to find docs matching the Feature/Criteria
-        context_query = f"Find standard business rules and style guides related to: {rules_text}"
-        retrieved_docs = self.archivist.ask(context_query)
+        clean_task_list = []
+        new_counter = 1
         
-        # We combine the User's Rules + Retrieved Docs into one "Master Context"
-        full_context = f"USER PROVIDED RULES:\n{rules_text}\n\nSYSTEM DOCS:\n{retrieved_docs}"
+        for scenario in scenario_list:
+            # FIX: Use correct function 'analyze_scenario' and pass Context
+            decision_str = self.archivist.analyze_scenario(scenario, context_rules)
+            
+            final_id = ""
+            final_desc = scenario 
+            
+            if "[MATCH]" in decision_str:
+                parts = decision_str.split("|")
+                if len(parts) > 1:
+                    final_id = parts[1].strip()
+                    print(f"✅ Match: {final_id} covers '{scenario[:30]}...'")
+                else:
+                    final_id = f"TC_NEW_{new_counter:03d}"
+                    new_counter += 1
+            else:
+                final_id = f"TC_NEW_{new_counter:03d}"
+                new_counter += 1
+                
+            clean_task_list.append(f"{final_id}: {final_desc}")
 
-        # STEP 3: PRODUCTION LOOP
-        topic = scenarios_text  # Author focuses on Scenarios
+        # 3. COMPILE MASTER LIST
+        topic_for_author = "\n".join(clean_task_list)
+        print(f"\n[MANAGER] Handing off {len(clean_task_list)} tasks to Author.")
+
+        # 4. ACTIVE RESOLUTION LOOP
+        full_context = f"RULES/AC:\n{context_rules}"
         feedback = ""
         previous_draft = ""
+        
         attempt = 1
-        max_attempts = 2 # Synergized limit
-
+        max_attempts = 3 
+        
         while attempt <= max_attempts:
-            print(f"\n[Attempt {attempt}/{max_attempts}]")
+            print(f"\n[Attempt {attempt}/{max_attempts}] Authoring...")
             
-            # Author works on 'topic' (Scenarios) using 'full_context' (Rules)
-            draft = self.author.write(topic, context=full_context, feedback=feedback, previous_draft=previous_draft)
+            # Manager Directive: Force Author to focus on feedback if it exists
+            if feedback:
+                print(f"[MANAGER] Instructing Author to fix Auditor feedback...")
+                manager_directive = f"AUDITOR REJECTED DRAFT. FIX: {feedback}"
+            else:
+                manager_directive = ""
+
+            draft = self.author.write(
+                topic_for_author, 
+                context=full_context, 
+                feedback=manager_directive, 
+                previous_draft=previous_draft
+            )
             previous_draft = draft
 
-            # Auditor checks the Draft against the Scenarios
-            review = self.auditor.review(topic, draft)
+            # Auditor Review
+            review = self.auditor.review(topic_for_author, draft)
             
             if "STATUS: APPROVED" in review:
-                print("\n[MANAGER] Quality Gate Passed.")
-                print("[MANAGER] Handing off to Scribe...")
-                # Scribe saves the SINGLE file containing ALL scenarios
-                save_status = self.scribe.save(draft)
-                return f"Workflow Complete.\n\n{save_status}"
+                print("[MANAGER] Quality Gate Passed. Synergy Achieved.")
+                return self.scribe.save(draft)
             else:
-                print("\n[MANAGER] Quality Gate Failed. Sending back to Author.")
-                print(f"Feedback: {review}")
-                feedback = review
+                print(f"[MANAGER] Feedback Received.")
+                feedback = review.replace("STATUS: REJECTED", "").strip()
                 attempt += 1
 
-        return "Error: Max attempts reached. Content could not be approved."
+        # 5. NO RUBBER STAMPING
+        # If we fail 3 times, we return the error. We do NOT save bad data.
+        return f"CRITICAL FAILURE: The team could not resolve the Auditor's requirements after {max_attempts} attempts. Please check if your Requirements are clear.\nFeedback: {feedback[:150]}..."
 
     def process_request(self, user_input):
-        self.sync_knowledge()
-        intent = self.classify_intent(user_input)
-        
-        if "QUESTION" in intent:
-            print(f"[MANAGER] Intent detected: RESEARCH")
-            return f"Archivist Report: {self.archivist.ask(user_input)}"
-        else:
-            print(f"[MANAGER] Intent detected: WORK ORDER")
-            return self.run_generation_workflow(user_input)
+        return self.run_generation_workflow(user_input)

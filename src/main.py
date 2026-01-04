@@ -5,43 +5,51 @@ from agents.manager import Manager
 # Load environment variables
 load_dotenv()
 
-def get_multiline_input():
+def get_smart_input():
     """
-    Reads multiple lines from the user.
-    - Stops reading immediately if user types 'exit' or 'quit'.
-    - Stops reading and submits if user presses Enter on an empty line (Double Enter).
+    Reads multi-line input smartly.
+    - Allows blank lines inside the text (e.g., between paragraphs).
+    - Submits AUTOMATICALLY when 3 consecutive empty lines are detected.
+    - Stops immediately if user types 'exit' or 'quit'.
     """
     print("Paste your User Story & Scenarios below.")
-    print("(Press Enter twice to submit. Type 'exit' on a new line to quit)")
+    print("(Press Enter 3 times to finish. Type 'exit' to quit)")
     print("-" * 50)
     
     lines = []
+    empty_streak = 0
+    
     while True:
         try:
             line = input()
             
-            # SMART CHECK: Instant Exit
-            # If the user types 'exit' or 'quit', we stop immediately.
+            # 1. Check for immediate exit
             if line.strip().lower() in ["exit", "quit"]:
-                return "exit"
+                return "EXIT"
 
-            # STOP CONDITION: Empty line (Double Enter)
-            if not line:
-                break
+            # 2. Smart Silence Detection
+            if not line.strip():
+                # It's an empty line. Increase the streak.
+                empty_streak += 1
+            else:
+                # Text found! Reset streak.
+                empty_streak = 0
             
+            # 3. Stop condition: 3 Empty lines in a row
+            if empty_streak >= 3:
+                break
+                
             lines.append(line)
             
         except EOFError:
-            # Handle Ctrl+D or unexpected stream end
             break
     
-    # Join all lines back into a single text block
+    # Clean up the trailing empty lines before returning
     return "\n".join(lines).strip()
 
 def main():
     print("Trace STLC Engine Starting...")
     
-    # 1. Initialize the Boss (Manager)
     try:
         manager = Manager()
         print("System Ready. (Manager is listening)")
@@ -49,36 +57,31 @@ def main():
         print(f"Critical System Error: {e}")
         sys.exit(1)
 
-    # 2. The Conversation Loop
     while True:
         print("\n" + "="*50)
         
-        # New "Smart" Input Function
-        user_input = get_multiline_input()
+        # Use the new Smart Input function
+        user_input = get_smart_input()
         
         # Exit Condition
-        # We check strictly against the specific keywords
-        if user_input.lower() in ["exit", "quit"]:
+        if user_input == "EXIT":
             print("Exiting...")
             break
 
-        # If user just hit enter without typing anything, restart loop
+        # Ignore empty submissions (e.g. user just hit enter once)
         if not user_input:
-            print("No input detected. Please try again.")
             continue
 
-        # 3. Delegate to Manager
         try:
+            # Delegate to Manager
             response = manager.process_request(user_input)
             
-            # 4. Show Result
             print("\n" + "-"*30)
             print("FINAL RESULT")
             print("-"*30)
             print(response)
             
         except KeyboardInterrupt:
-            # Handle Ctrl+C gracefully
             print("\nOperation cancelled by user.")
             continue
         except Exception as e:

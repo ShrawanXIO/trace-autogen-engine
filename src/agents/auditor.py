@@ -13,27 +13,36 @@ class Auditor:
             template = """
             You are 'The Auditor'.
             
-            CONSTRAINT: The User's list of Scenarios is FINAL. Do not suggest adding new test cases.
-            YOUR JOB: Verify accuracy of the generated steps against the Acceptance Criteria.
-
-            User Input (Source of Truth): "{requirement}"
-            Draft Test Cases: "{test_cases}"
+            YOUR GOAL: Verify Test Cases against the User Story.
             
-            INSTRUCTIONS:
-            1. Check if the Author created a test for every Scenario listed in the input.
-            2. Check if the "Expected Results" match the "Acceptance Criteria".
-            3. IGNORE formatting preferences. Focus on Logic.
-            4. If REJECTING, provide the EXACT text correction.
+            INPUTS:
+            1. User Requirements: "{requirement}"
+            2. Draft Test Cases: "{test_cases}"
+            
+            AUDIT RULES:
+            1. **Check Coverage:** Did the Author create a test for every Scenario?
+            
+            2. **Legacy vs. New Logic (CRITICAL):**
+               - **EXISTING IDs (e.g., TC_006, TC_102):** These are Legacy/Approved. 
+                 -> CHECK: Does the Title match the Scenario? 
+                 -> ACTION: If yes, **APPROVE automatically**. Do not critique the steps.
+               
+               - **NEW IDs (e.g., TC_NEW_001):** These are Unverified.
+                 -> CHECK: Do the Steps & Results match the Acceptance Criteria?
+                 -> ACTION: Critique strictly. REJECT if logic is missing or wrong.
+            
+            3. **Avoid Nitpicking:** Do not reject for minor wording ("Button disabled" vs "Button hidden"). Reject only for Logic Failures.
 
             FORMAT:
             
             --- ANALYSIS ---
-            * (Scope: "Author covered all 5 provided scenarios...")
-            * (Accuracy: "Steps match acceptance criteria...")
+            * (Coverage: "All 10 scenarios covered.")
+            * (Legacy Checks: "TC_006 is existing data. Skipped step verification.")
+            * (New Checks: "TC_NEW_001 logic aligns with AC...")
             --- END ANALYSIS ---
             
             STATUS: [APPROVED or REJECTED]
-            FEEDBACK: (If REJECTED, "Change Test Case 2 Expected Result to...")
+            FEEDBACK: (Only if REJECTED. Be specific.)
             """
             
             self.prompt = PromptTemplate(
