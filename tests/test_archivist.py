@@ -1,8 +1,13 @@
 import sys
 import os
 
-# Add 'src' to the python path so we can find the agents folder
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+# --- ROBUST PATH SETUP ---
+# 1. Get current directory (tests/)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 2. Go UP one level to root, then DOWN into src
+src_path = os.path.join(current_dir, "..", "src")
+# 3. Add to Python Path
+sys.path.append(src_path)
 
 from agents.archivist import Archivist
 
@@ -11,11 +16,11 @@ def test_archivist():
     
     try:
         # Initialize the agent
+        # This will now use config.py and connect to the Knowledge Base
         agent = Archivist()
         print("✅ Archivist initialized successfully.")
         
-        # Define a test query
-        # (Change this to something actually in your PDF/knowledge base for a real test)
+        # Test Query
         query = "What is the main topic of the document?"
         
         print(f"\n--- 2. Asking Question: '{query}' ---")

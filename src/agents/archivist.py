@@ -1,4 +1,5 @@
 import sys
+import config
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -7,7 +8,7 @@ from tools.knowledge_base import get_retriever
 class Archivist:
     def __init__(self):
         print("--- Initializing Archivist Agent (Expert in Legacy & Specs) ---")
-        self.llm = ChatOllama(model="ministral-3:14b-cloud")
+        self.llm = config.get_llm("archivist")
         
         # Connect to Vector Store
         try:

@@ -3,6 +3,7 @@ import time
 import json
 import csv
 import re
+import config
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -16,7 +17,7 @@ class Scribe:
             os.makedirs(self.output_dir)
 
         # Smart Model for JSON parsing
-        self.llm = ChatOllama(model="ministral-3:14b-cloud")
+        self.llm = config.get_llm("scribe")
         
         # Global Headers matching your requirement
         self.CSV_HEADERS = ["ID", "Title", "Action", "Expected Result"]
