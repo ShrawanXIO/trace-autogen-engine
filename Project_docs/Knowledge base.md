@@ -13,3 +13,10 @@ pip install -r requirements.txt
 # 4. run the app !! 
 
 streamlit run src/app.py
+
+
+##And sometimes we will not be able to discover our Python tests. So in order to discover the Python tests, we need to do this 
+Press Ctrl+Shift+P.
+Type Python: Configure Tests.
+select Tests folder 
+Must start with `test_`

@@ -1,0 +1,9 @@
+﻿"ID","Title","Action","Expected Result"
+"TC_LOGIN_001","Verify User Login - User enters credentials - Successful redirection to Dashboard","",""
+"","","Pre-conditions:
+User is on the login page.",""
+"","","1. Enter valid username.","1. Username field accepts input."
+"","","2. Enter valid password.","2. Password field is masked."
+"","","3. Click the 'Login' button.","3. User is redirected to the Dashboard."
+"","","Cleanup:
+",""
