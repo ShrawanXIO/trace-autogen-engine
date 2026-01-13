@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import config
 
 # Ensure we can import from src/
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,7 +26,7 @@ class Manager:
         self.author = Author()
         self.auditor = Auditor(archivist_agent=self.archivist)
         self.scribe = Scribe()
-        self.llm = ChatOllama(model="ministral-3:14b-cloud")
+        self.llm = config.get_llm("manager")
 
         # --- SMART PARSER PROMPT ---
         self.parser_template = """
@@ -154,5 +155,38 @@ class Manager:
         # If we fail 3 times, we return the error. We do NOT save bad data.
         return f"CRITICAL FAILURE: The team could not resolve the Auditor's requirements after {max_attempts} attempts. Please check if your Requirements are clear.\nFeedback: {feedback[:150]}..."
 
+    def _validate_input(self, user_input):
+        """Internal Guardrail: Filters out greetings and noise."""
+        cleaned = user_input.strip().lower()
+        greetings = ["hi", "hello", "hey", "greetings", "test", "start", "demo"]
+        
+        if cleaned in greetings:
+            return False, "Greeting detected. No functional requirement provided.", "GREETING"
+            
+        if len(cleaned) < 12:
+            return False, "Input is too short/vague to generate robust tests.", "INVALID_FORMAT"
+
+        return True, "Valid Input", "VALID_WORK"
+
     def process_request(self, user_input):
+        is_valid, reason, context_type = self._validate_input(user_input)
+        if not is_valid:
+            return {
+                "status": "rejected", 
+                "message": f"⚠️ **Guardrail Active:** {reason}\n\n*Please provide a full User Story.*",
+                "preview": None,
+                "file_path": None
+            }
+
+        if "?" in user_input or "what is" in user_input.lower():
+            print("[MANAGER] Detected Question. Routing to Archivist...")
+            # Wrap this in the dictionary format for the UI
+            answer = self.archivist.ask(user_input)
+            return {
+                "status": "success",
+                "message": "Archivist retrieved information.",
+                "preview": answer,
+                "file_path": None
+            }
+
         return self.run_generation_workflow(user_input)

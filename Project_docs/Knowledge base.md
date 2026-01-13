@@ -9,3 +9,7 @@ venv\Scripts\activate
 # 3. Install the libraries
 pip install -r requirements.txt    
                                 # Whatever the Dependencies that are required to run this project will be inside the requirements.txt file. 
+
+# 4. run the app !! 
+
+streamlit run src/app.py

@@ -1,4 +1,5 @@
 import sys
+import config
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -8,7 +9,7 @@ class Auditor:
         print("--- Initializing Auditor Agent ---")
         try:
             self.archivist = archivist_agent
-            self.llm = ChatOllama(model="gemma3:27b-cloud")
+            self.llm = config.get_llm("auditor")
 
             template = """
             You are 'The Auditor'.

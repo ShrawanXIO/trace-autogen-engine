@@ -1,4 +1,5 @@
 import sys
+import config
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -7,7 +8,7 @@ from tools.knowledge_base import get_retriever
 class Archivist:
     def __init__(self):
         print("--- Initializing Archivist Agent (Expert in Legacy & Specs) ---")
-        self.llm = ChatOllama(model="ministral-3:14b-cloud")
+        self.llm = config.get_llm("archivist")
         
         # Connect to Vector Store
         try:
@@ -20,12 +21,22 @@ class Archivist:
     def ask(self, query):
         """Standard doc retrieval for Manager's context gathering."""
         if not self.retriever:
-            return "No Knowledge Base."
+            return "No Knowledge Base connection."
+        
         try:
+            # 1. Fetch Documents
             docs = self.retriever.invoke(query)
+            
+            # 2. CHECK: Did we find anything?
+            if not docs:
+                # Explicitly state that the test case/info was not found
+                return "Test case not found in the archives."
+            
+            # 3. Return content if found
             return "\n\n".join([doc.page_content for doc in docs])
+            
         except Exception as e:
-            return f"Error: {e}"
+            return f"Error retrieving data: {e}"
 
     def analyze_scenario(self, scenario, context):
         """
@@ -37,13 +48,15 @@ class Archivist:
             return f"[NEW] | TC_NEW | {scenario}"
 
         # --- STEP 1: RETRIEVE LEGACY DATA ---
-        # We specifically ask for ID AND Description to ensure we get context
         legacy_query = f"legacy test case id and description for scenario: {scenario}"
         try:
             legacy_docs = self.retriever.invoke(legacy_query)
-            legacy_data = "\n".join([doc.page_content for doc in legacy_docs])
+            if not legacy_docs:
+                 legacy_data = "Test case not found in the archives."
+            else:
+                 legacy_data = "\n".join([doc.page_content for doc in legacy_docs])
         except:
-            legacy_data = "No legacy tests found."
+            legacy_data = "Error retrieving legacy tests."
 
         # --- STEP 2: RETRIEVE FUNCTIONAL SPECS ---
         spec_query = f"functional requirement business rule for: {scenario} context: {context}"
@@ -70,7 +83,7 @@ class Archivist:
         STRICT MATCHING RULES:
         1. **Compare Functionality:** Do not just look for an ID. Read the description.
            - If Legacy Data is "Verify Login" but New Scenario is "Search Book", this is a MISMATCH. Output [NEW].
-           - If Legacy Data is "Verify Cart" but New Scenario is "Checkout", this is a MISMATCH. Output [NEW].
+           - If Legacy Data says "Test case not found", this is a MISMATCH. Output [NEW].
            - Only output [MATCH] if the logic is identical.
         
         2. **Ignore Requirements:** IDs like "3.1.1", "REQ-01", "Page 5" are NOT Test Cases. Ignore them.
@@ -98,38 +111,25 @@ class Archivist:
             }).strip()
 
             # --- PYTHON SAFETY GUARDRAIL ---
-            # Even if LLM says MATCH, we verify the ID format.
             if "[MATCH]" in result:
                 parts = result.split("|")
                 if len(parts) > 1:
                     found_id = parts[1].strip().upper()
-                    # 1. Reject Requirement IDs (starting with digits like 3.1.1)
-                    # 2. Reject IDs that don't contain standard prefixes if strictness is needed
-                    if found_id[0].isdigit():
+                    if found_id[0].isdigit(): 
                         return f"[NEW] | TC_NEW | {scenario}"
-                    # 3. Reject if the ID is actually just the scenario name (hallucination)
                     if len(found_id) > 20 and " " in found_id:
                          return f"[NEW] | TC_NEW | {scenario}"
             
             return result
 
         except Exception as e:
-            # Fallback to NEW on any error to prevent blocking
             return f"[NEW] | TC_NEW | {scenario}"
 
     def reconcile_scenarios(self, context, new_scenarios_text):
-        """
-        Loops through all scenarios and performs the deep analysis.
-        """
         print(f"[ARCHIVIST] Verifying {len(new_scenarios_text.splitlines())} scenarios against Legacy Data & Specs...")
-        
         results = []
-        # Filter empty lines
         scenarios = [s.strip() for s in new_scenarios_text.split('\n') if s.strip()]
-        
         for scen in scenarios:
-            # Analyze each one individually for maximum accuracy
             result = self.analyze_scenario(scen, context)
             results.append(result)
-            
         return "\n".join(results)
