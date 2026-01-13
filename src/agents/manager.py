@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import config
 
 # Ensure we can import from src/
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,7 +26,7 @@ class Manager:
         self.author = Author()
         self.auditor = Auditor(archivist_agent=self.archivist)
         self.scribe = Scribe()
-        self.llm = ChatOllama(model="ministral-3:14b-cloud")
+        self.llm = config.get_llm("manager")
 
         # --- SMART PARSER PROMPT ---
         self.parser_template = """
@@ -155,4 +156,7 @@ class Manager:
         return f"CRITICAL FAILURE: The team could not resolve the Auditor's requirements after {max_attempts} attempts. Please check if your Requirements are clear.\nFeedback: {feedback[:150]}..."
 
     def process_request(self, user_input):
+        if "?" in user_input or "what is" in user_input.lower():
+            print("[MANAGER] Detected Question. Routing to Archivist...")
+            return self.archivist.ask(user_input)
         return self.run_generation_workflow(user_input)
