@@ -48,8 +48,36 @@ class TestManagerLogic(unittest.TestCase):
         # Execution
         response = self.manager.process_request("What is the password policy?")
         
-        # Assertion
-        self.assertIn("password policy", response, "Manager output should contain the archivist's answer.")
+        # --- FIX: Handle Dictionary Response ---
+        # The Manager now returns a dict, so we must check the 'preview' key
+        self.assertIsInstance(response, dict, "Manager should return a dictionary.")
+        self.assertIn("password policy", response['preview'], 
+                      "Manager output should contain the archivist's answer in the 'preview' field.")
+        
+
+    def test_guardrail_rejects_gibberish(self):
+        """TEST 4: GUARDRAIL CHECK (Gibberish Input)"""
+        # Setup
+        gibberish_input = "hi"
+        
+        # We need to un-mock analyze_input_smartly just for this test 
+        # because the guardrail might rely on real logic or we just check the return dictionary.
+        # But actually, the guardrail is in process_request BEFORE analyze_input_smartly.
+        
+        # Execution
+        response = self.manager.process_request(gibberish_input)
+        
+        # Assertion 1: Check if it returns a Dictionary (UI format)
+        self.assertIsInstance(response, dict, "Guardrail must return a Dictionary for the UI.")
+        
+        # Assertion 2: Check status is 'rejected'
+        self.assertEqual(response['status'], 'rejected', "Manager should have rejected 'hi'.")
+        
+        # Assertion 3: Verify downstream agents were NOT called
+        self.manager.author.write.assert_not_called()
+        print("✅ [Pass] Manager correctly blocked the Greeting.")
+
+        
 
     def test_duplicate_scenario_handling(self):
         """TEST 2: User submits a Duplicate Scenario"""
