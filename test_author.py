@@ -5,6 +5,15 @@ from unittest.mock import MagicMock, patch
 
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
+# Pre-import real langchain submodules so later test files that stub them
+# (with `if _mod not in sys.modules`) do not replace the real packages.
+try:
+    import langchain_core.prompts      # noqa: F401
+    import langchain_core.output_parsers  # noqa: F401
+    import langchain_ollama             # noqa: F401
+except ImportError:
+    pass
+
 _ollama_up = False
 try:
     import requests
@@ -79,6 +88,9 @@ class TestAuthorIntegration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from unittest.mock import MagicMock
+        if isinstance(sys.modules.get("langchain_ollama"), MagicMock):
+            raise unittest.SkipTest("langchain_ollama is stubbed by another test module")
         from agents.author import Author
         cls.agent = Author()
 

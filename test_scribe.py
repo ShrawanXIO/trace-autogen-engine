@@ -5,6 +5,13 @@ from unittest.mock import MagicMock, patch
 
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
+try:
+    import langchain_core.prompts      # noqa: F401
+    import langchain_core.output_parsers  # noqa: F401
+    import langchain_ollama             # noqa: F401
+except ImportError:
+    pass
+
 _ollama_up = False
 try:
     import requests
@@ -97,6 +104,9 @@ class TestScribeIntegration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from unittest.mock import MagicMock
+        if isinstance(sys.modules.get("langchain_ollama"), MagicMock):
+            raise unittest.SkipTest("langchain_ollama is stubbed by another test module")
         from agents.scribe import Scribe
         cls.scribe = Scribe()
 
