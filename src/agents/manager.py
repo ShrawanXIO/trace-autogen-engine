@@ -97,7 +97,7 @@ class Manager:
         
         try:
             return chain.invoke({"input": user_input}).strip().upper()
-        except:
+        except Exception:
             return "REQUIREMENT"
 
     def run_generation_workflow(self, user_input):

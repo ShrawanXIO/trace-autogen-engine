@@ -46,7 +46,7 @@ def ingest_knowledge_base():
         try:
             with open(STATE_FILE, 'r') as f:
                 saved_state = json.load(f)
-        except:
+        except Exception:
             saved_state = {}
 
     # C. Compare
