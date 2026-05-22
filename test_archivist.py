@@ -5,7 +5,7 @@ import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 # Guard: skip the entire module if the vector store doesn't exist or
-# Ollama is unreachable — prevents CI failures when infra is not running.
+# Ollama is unreachable - prevents CI failures when infra is not running.
 VECTOR_STORE_PATH = os.path.join(os.path.dirname(__file__), "data", "vector_store")
 _infra_available = os.path.exists(VECTOR_STORE_PATH)
 

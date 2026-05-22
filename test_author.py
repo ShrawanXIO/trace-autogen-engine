@@ -1,45 +1,103 @@
 import sys
 import os
+import unittest
+from unittest.mock import MagicMock, patch
 
-# Add 'src' to python path
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-from agents.author import Author
+_ollama_up = False
+try:
+    import requests
+    _ollama_up = requests.get("http://localhost:11434", timeout=2).status_code == 200
+except Exception:
+    pass
 
-def run_test():
-    print("--- Starting Author Interactive Test ---")
-    try:
-        # Initialize
-        agent = Author()
-        
-        # --- STEP 1: First Draft ---
-        topic = "Login with invalid password"
-        print(f"\n1. Writing First Draft for: '{topic}'...")
-        
-        draft = agent.write(topic, context="")
+INTEGRATION_SKIP = "Integration test requires a running Ollama instance"
 
-        print("\n--- Draft Output ---")
-        print(draft)
-        print("--------------------")
 
-        # --- STEP 2: Revision (The New Feature) ---
-        feedback = "You missed the cleanup step. Please add 'Clear browser cache' to the cleanup steps for all test cases."
-        print(f"\n2. Sending Feedback: '{feedback}'...")
+class TestAuthorUnit(unittest.TestCase):
+    """Unit tests - fully mocked, no Ollama required."""
 
-        # We pass the OLD draft so the agent can fix it
-        revised_content = agent.write(topic, context="", feedback=feedback, previous_draft=draft)
-        
-        print("\n--- Revised Output ---")
-        print(revised_content)
-        print("----------------------")
-        
-        if "Clear browser cache" in revised_content:
-            print("PASS: Author successfully applied the feedback.")
-        else:
-            print("WARNING: Feedback might not have been applied perfectly.")
+    @patch("agents.author.ChatOllama")
+    def setUp(self, MockLLM):
+        from agents.author import Author
+        self.MockLLM = MockLLM
+        self.mock_llm_instance = MockLLM.return_value
+        self.agent = Author()
 
-    except Exception as e:
-        print(f"FAIL: Test Failed: {e}")
+    def _set_response(self, text):
+        self.agent.chain = MagicMock()
+        self.agent.chain.invoke.return_value = text
+
+    def test_write_returns_content_when_no_thoughts_section(self):
+        self._set_response("Test Case ID: TC_01\nTitle: Login\nExpected Result: Success")
+        result = self.agent.write("Login scenario", context="Some rules")
+        self.assertIn("TC_01", result)
+
+    def test_write_strips_thoughts_section(self):
+        self._set_response(
+            "--- THOUGHTS ---\nStrategy notes here\n--- END THOUGHTS ---\n"
+            "Test Case ID: TC_01\nTitle: Login"
+        )
+        result = self.agent.write("Login scenario", context="Some rules")
+        self.assertNotIn("THOUGHTS", result)
+        self.assertIn("TC_01", result)
+
+    def test_write_passes_feedback_and_previous_draft(self):
+        self._set_response("Test Case ID: TC_01")
+        self.agent.write(
+            "Login scenario",
+            context="Some rules",
+            feedback="Add cleanup step",
+            previous_draft="Old draft"
+        )
+        call_kwargs = self.agent.chain.invoke.call_args[0][0]
+        self.assertEqual(call_kwargs["feedback"], "Add cleanup step")
+        self.assertEqual(call_kwargs["previous_draft"], "Old draft")
+
+    def test_write_defaults_none_feedback_to_literal_none(self):
+        self._set_response("Test Case ID: TC_01")
+        self.agent.write("Login scenario", context="rules")
+        call_kwargs = self.agent.chain.invoke.call_args[0][0]
+        self.assertEqual(call_kwargs["feedback"], "None")
+
+    def test_write_empty_topic_returns_guidance(self):
+        result = self.agent.write("", context="rules")
+        self.assertIn("provide a topic", result.lower())
+
+    def test_write_with_feedback_invokes_chain_once(self):
+        self._set_response("TC_01: Revised test")
+        result = self.agent.write("topic", context="rules", feedback="Fix step 2")
+        self.agent.chain.invoke.assert_called_once()
+        self.assertIsInstance(result, str)
+        self.assertGreater(len(result), 0)
+
+
+@unittest.skipUnless(_ollama_up, INTEGRATION_SKIP)
+class TestAuthorIntegration(unittest.TestCase):
+    """Integration tests - require a running Ollama instance."""
+
+    @classmethod
+    def setUpClass(cls):
+        from agents.author import Author
+        cls.agent = Author()
+
+    def test_first_draft_returns_non_empty_string(self):
+        result = self.agent.write("Login with invalid password", context="")
+        self.assertIsInstance(result, str)
+        self.assertGreater(len(result), 50)
+
+    def test_feedback_revision_returns_non_empty_string(self):
+        draft = self.agent.write("Login with invalid password", context="")
+        revised = self.agent.write(
+            "Login with invalid password",
+            context="",
+            feedback="Add a cleanup step to clear browser cache.",
+            previous_draft=draft
+        )
+        self.assertIsInstance(revised, str)
+        self.assertGreater(len(revised), 50)
+
 
 if __name__ == "__main__":
-    run_test()
+    unittest.main(verbosity=2)

@@ -49,7 +49,8 @@ class Manager:
         INSTRUCTIONS:
         1. Extract the "Rules/Context" (Feature Description, Background, Acceptance Criteria).
         2. Extract the "Scenarios" (The numbered list or specific test scenarios).
-        
+        3. Use plain text only. Do NOT use emoji, symbols, or any non-ASCII characters in your output.
+
         FORMAT OUTPUT strictly as:
         --- RULES ---
         (Paste rules here)
@@ -85,12 +86,12 @@ class Manager:
         template = """
         Analyze the user input and determine the Intent.
         Input: "{input}"
-        
+
         Options:
         1. QUESTION (User asks for info/rules).
         2. REQUIREMENT (User provides a scenario/story).
-        
-        Return ONLY one word: "QUESTION" or "REQUIREMENT".
+
+        Return ONLY one word: "QUESTION" or "REQUIREMENT". No emoji. No extra text.
         """
         prompt = PromptTemplate(template=template, input_variables=["input"])
         chain = prompt | self.llm | StrOutputParser()

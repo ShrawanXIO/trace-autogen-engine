@@ -61,7 +61,7 @@ def ingest_knowledge_base():
         documents = load_documents_dynamically()
         
         if documents:
-            # 2. Pantry: Update DB (non-interactive — never block the pipeline on input())
+            # 2. Pantry: Update DB (non-interactive - never block the pipeline on input())
             update_vector_store(documents, interactive=False)
             
             # 3. Logbook: Save the new state so we don't run again

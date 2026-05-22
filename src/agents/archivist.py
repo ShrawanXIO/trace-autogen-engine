@@ -28,6 +28,7 @@ class Archivist:
                scan the Context for test cases that cover those exact scenarios.
                - If matching test cases ARE found: start your response with "FOUND_EXISTING:" followed by the test case details.
                - If no matching test cases are found: start your response with "NO_EXISTING_TESTS:" followed by a brief explanation.
+            6. OUTPUT FORMAT: Use plain text only. Do NOT use emoji, symbols, bullet glyphs, or any non-ASCII characters in your response.
 
             --- CONTEXT (Retrieved from Database) ---
             {context}

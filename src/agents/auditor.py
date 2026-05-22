@@ -24,6 +24,7 @@ class Auditor:
             2. Check if the "Expected Results" match the "Acceptance Criteria".
             3. IGNORE formatting preferences. Focus on Logic.
             4. If REJECTING, provide the EXACT text correction.
+            5. Use plain text only. Do NOT use emoji, symbols, or any non-ASCII characters in your response.
 
             FORMAT:
             

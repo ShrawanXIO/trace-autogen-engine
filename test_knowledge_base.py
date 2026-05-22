@@ -53,7 +53,7 @@ class TestDeleteBySource(unittest.TestCase):
 
         _delete_by_source(vs, "/a/file.csv")
 
-        # Must use public .delete(ids=...) — never _collection
+        # Must use public .delete(ids=...) - never _collection
         vs.delete.assert_called_once_with(ids=["id1", "id2"])
         vs._collection.delete.assert_not_called()
 
@@ -107,7 +107,7 @@ class TestUpdateVectorStore(unittest.TestCase):
         ]
         MockChroma.return_value = vs
 
-        # No docs on disk — old_file.pdf is "deleted"
+        # No docs on disk - old_file.pdf is "deleted"
         update_vector_store([], interactive=False)
 
         # Public delete API must be called with IDs, not _collection

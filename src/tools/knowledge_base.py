@@ -31,7 +31,7 @@ def update_vector_store(documents, interactive=True):
     """
     Smart incremental sync:
     1. Adds chunks for NEW files only.
-    2. Removes chunks for DELETED files — asks confirmation when interactive=True,
+    2. Removes chunks for DELETED files - asks confirmation when interactive=True,
        skips silently when interactive=False (automated/pipeline mode).
     """
     embedding_function = get_embedding_function()
