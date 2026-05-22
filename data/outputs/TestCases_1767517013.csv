@@ -1,0 +1,74 @@
+﻿"ID","Title","Action","Expected Result"
+"TC_006","Search Functionality - Search by Title - Display Matching Books with Pagination","",""
+"","","Pre-conditions:
+User is logged into the library system or on the public search interface. The system has a populated database with books containing valid titles.",""
+"","","1. Navigate to the search interface.","1. The system displays all books matching the exact or partial title entered."
+"","","2. Enter a valid book title (e.g., 'The Great Gatsby') in the search bar.","2. Results are paginated with a maximum of 20 items per page (if applicable)."
+"","","3. Submit the search query.",""
+"","","Cleanup:
+Clear search query and log out if necessary.",""
+"TC_NEW_001","Search Functionality - Search by Author - Display Author's Books with Pagination","",""
+"","","Pre-conditions:
+User is on the search interface. The system contains books with valid author names in the database.",""
+"","","1. Navigate to the search interface.","1. The system displays all books written by the specified author."
+"","","2. Enter a valid author name (e.g., 'J.K. Rowling') in the search bar.","2. Results are paginated with a maximum of 20 items per page (if applicable)."
+"","","3. Submit the search query.",""
+"","","Cleanup:
+Clear search query.",""
+"TC_NEW_002","Search Functionality - Search by ISBN - Display Exact Book Record (No Pagination)","",""
+"","","Pre-conditions:
+User is on the search interface. The system contains books with valid ISBNs in the database.",""
+"","","1. Navigate to the search interface.","1. The system displays the exact book record matching the entered ISBN."
+"","","2. Enter a valid ISBN (e.g., '978-0743273565') in the search bar.","2. No pagination is required (single result)."
+"","","3. Submit the search query.",""
+"","","Cleanup:
+Clear search query.",""
+"TC_NEW_003","Cart Management - Verify Cart Limit (Max 10 Items) - Block 11th Item with Error","",""
+"","","Pre-conditions:
+User is logged into the system with an empty cart. The system enforces a cart limit of 10 items.",""
+"","","1. Navigate to the book catalog or search interface.","1. The system allows the first 10 items to be added successfully."
+"","","2. Add 10 books to the cart.","2. The 11th item is blocked with an error message: 'Cart limit reached (Max 10 items).'"
+"","","3. Attempt to add an 11th book to the cart.",""
+"","","Cleanup:
+Clear cart and log out if necessary.",""
+"TC_NEW_004","Search Functionality - Combined Search (Title, Author, ISBN) - Display Exact Match (No Pagination)","",""
+"","","Pre-conditions:
+User is on the search interface. The system contains books with matching Title, Author, and ISBN combinations.",""
+"","","1. Navigate to the search interface.","1. The system displays the exact book record matching all three criteria."
+"","","2. Enter a valid Title (e.g., 'The Great Gatsby'), Author (e.g., 'F. Scott Fitzgerald'), and ISBN (e.g., '978-0743273565') in the respective fields.","2. No pagination is required (single result)."
+"","","3. Submit the search query.",""
+"","","Cleanup:
+Clear search query.",""
+"TC_NEW_005","Search Functionality - Partial Match (Title and Author) - Display Matching Books with Pagination","",""
+"","","Pre-conditions:
+User is on the search interface. The system contains books matching partial Title and Author combinations.",""
+"","","1. Navigate to the search interface.","1. The system displays all books matching both partial Title and Author criteria."
+"","","2. Enter a partial Title (e.g., 'Great G') and Author (e.g., 'F. Scott') in the respective fields.","2. Results are paginated with a maximum of 20 items per page (if applicable)."
+"","","3. Submit the search query.",""
+"","","Cleanup:
+Clear search query.",""
+"TC_NEW_006","Pagination - Boundary Test (Exactly 20 Items) - Display All Items Without Next Page","",""
+"","","Pre-conditions:
+User is on the search interface. The system contains exactly 20 books matching the search criteria.",""
+"","","1. Navigate to the search interface.","1. The system displays all 20 items on the first page."
+"","","2. Enter a search query that returns exactly 20 results (e.g., 'Title: Harry Potter').","2. No 'Next Page' or pagination controls are shown."
+"","","3. Submit the search query.",""
+"","","Cleanup:
+Clear search query.",""
+"TC_NEW_007","Pagination - Overflow Test (21+ Items) - Display Pagination Controls","",""
+"","","Pre-conditions:
+User is on the search interface. The system contains 21+ books matching the search criteria.",""
+"","","1. Navigate to the search interface.","1. The system displays the first 20 items on Page 1."
+"","","2. Enter a search query that returns 21+ results (e.g., 'Author: Stephen King').","2. A 'Next Page' or 'Page 2' navigation control is visible."
+"","","3. Submit the search query.","3. Clicking 'Next Page' displays the remaining 1+ items on Page 2."
+"","","4. Click 'Next Page' or 'Page 2' navigation control.",""
+"","","Cleanup:
+Clear search query.",""
+"TC_NEW_008","Cart Management - Verify Out-of-Stock Item Block - Display Error Message","",""
+"","","Pre-conditions:
+User is logged into the system with an empty cart. The system contains books with stock status (some in-stock, some out-of-stock).",""
+"","","1. Navigate to the book catalog or search interface.","1. The system prevents the out-of-stock item from being added."
+"","","2. Locate a book marked as 'Out of Stock'.","2. An error message is displayed: 'Item is currently out of stock.'"
+"","","3. Attempt to add the out-of-stock book to the cart.",""
+"","","Cleanup:
+Clear cart and log out if necessary.",""
