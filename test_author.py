@@ -16,8 +16,8 @@ def run_test():
         topic = "Login with invalid password"
         print(f"\n1. Writing First Draft for: '{topic}'...")
         
-        draft = agent.write(topic)
-        
+        draft = agent.write(topic, context="")
+
         print("\n--- Draft Output ---")
         print(draft)
         print("--------------------")
@@ -25,21 +25,21 @@ def run_test():
         # --- STEP 2: Revision (The New Feature) ---
         feedback = "You missed the cleanup step. Please add 'Clear browser cache' to the cleanup steps for all test cases."
         print(f"\n2. Sending Feedback: '{feedback}'...")
-        
+
         # We pass the OLD draft so the agent can fix it
-        revised_content = agent.write(topic, feedback=feedback, previous_draft=draft)
+        revised_content = agent.write(topic, context="", feedback=feedback, previous_draft=draft)
         
         print("\n--- Revised Output ---")
         print(revised_content)
         print("----------------------")
         
         if "Clear browser cache" in revised_content:
-            print("✅ Success: Author successfully applied the feedback.")
+            print("PASS: Author successfully applied the feedback.")
         else:
-            print("⚠️ Warning: Feedback might not have been applied perfectly.")
+            print("WARNING: Feedback might not have been applied perfectly.")
 
     except Exception as e:
-        print(f"❌ Test Failed: {e}")
+        print(f"FAIL: Test Failed: {e}")
 
 if __name__ == "__main__":
     run_test()

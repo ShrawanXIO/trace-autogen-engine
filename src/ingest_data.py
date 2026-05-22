@@ -51,9 +51,9 @@ def ingest_knowledge_base():
 
     # C. Compare
     if current_state == saved_state and current_state:
-        return "✔ System is up-to-date. No ingestion needed."
+        return "[OK] System is up-to-date. No ingestion needed."
 
-    print("⚡ Changes detected. triggering update...")
+    print("[!] Changes detected. Triggering update...")
 
     # D. WORK: Reuse your existing modules
     try:

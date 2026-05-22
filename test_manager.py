@@ -5,6 +5,12 @@ from unittest.mock import MagicMock, patch
 # Add src to path so we can import the Manager
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
+# Stub out optional packages that may not be installed in all environments.
+# The test mocks all agents, so these are never actually used at runtime.
+for _mod in ("langchain_chroma", "chromadb"):
+    if _mod not in sys.modules:
+        sys.modules[_mod] = MagicMock()
+
 from agents.manager import Manager
 
 def run_test():
@@ -23,7 +29,7 @@ def run_test():
         print("\n[Setup] Initializing Manager with Mock Team...")
         
         # Mock the Ingestion result
-        MockIngest.return_value = "✔ System is up-to-date (Simulation)"
+        MockIngest.return_value = "[OK] System is up-to-date (Simulation)"
         
         # Initialize Manager (It will use our Mocks now)
         manager = Manager()
