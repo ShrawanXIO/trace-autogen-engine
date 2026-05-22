@@ -46,14 +46,14 @@ def ingest_knowledge_base():
         try:
             with open(STATE_FILE, 'r') as f:
                 saved_state = json.load(f)
-        except:
+        except Exception:
             saved_state = {}
 
     # C. Compare
     if current_state == saved_state and current_state:
-        return "✔ System is up-to-date. No ingestion needed."
+        return "[OK] System is up-to-date. No ingestion needed."
 
-    print("⚡ Changes detected. triggering update...")
+    print("[!] Changes detected. Triggering update...")
 
     # D. WORK: Reuse your existing modules
     try:
@@ -61,8 +61,8 @@ def ingest_knowledge_base():
         documents = load_documents_dynamically()
         
         if documents:
-            # 2. Pantry: Update DB
-            update_vector_store(documents)
+            # 2. Pantry: Update DB (non-interactive - never block the pipeline on input())
+            update_vector_store(documents, interactive=False)
             
             # 3. Logbook: Save the new state so we don't run again
             with open(STATE_FILE, 'w') as f:

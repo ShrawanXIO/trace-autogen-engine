@@ -30,6 +30,7 @@ class Scribe:
         3. Header row MUST be: "ID,Title,Pre-conditions,Steps,Expected Result".
         4. Wrap fields in quotes if they contain commas.
         5. Do NOT include any intro text or markdown (like ```csv). Just the raw CSV data.
+        6. Use plain text only. Do NOT use emoji, symbols, or any non-ASCII characters in your output.
         """
         
         self.prompt = PromptTemplate(

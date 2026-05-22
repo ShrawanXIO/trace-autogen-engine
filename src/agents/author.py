@@ -29,6 +29,7 @@ class Author:
             3. Use "BUSINESS RULES" to fill in the "Pre-conditions" and "Expected Results".
             4. If Feedback exists, fix the errors without rewriting valid tests.
             5. Output ALL test cases in one single block.
+            6. Use plain text only. Do NOT use emoji, symbols, or any non-ASCII characters in your response.
 
             FORMAT:
             
